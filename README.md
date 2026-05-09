@@ -16,7 +16,7 @@ Modern salon booking website with AI chatbot assistant.
 - TypeScript
 - Tailwind CSS
 - Supabase
-- Gemini AI
+- Groq API
 
 ## Installation
 
@@ -37,6 +37,9 @@ Run development server:
 ```bash
 npm run dev
 ```
+## Environment Variables
+
+Create a `.env.local` file and add the required API keys for Supabase and Groq API.
 
 ## Author
 
