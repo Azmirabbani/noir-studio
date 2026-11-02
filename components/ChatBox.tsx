@@ -33,6 +33,17 @@ export default function ChatBox({ onOpenBooking }: ChatBoxProps) {
     const trimmed = input.trim();
     if (!trimmed || loading) return;
 
+    const history = messages
+      .filter((m) => m.text)
+      .slice(-8)
+      .map((m) => ({
+        role: m.role === "user" ? "user" : "assistant",
+        content:
+          m.role === "bot" && m.recommendation
+            ? `${m.text}\n${JSON.stringify({ recommend: m.recommendation.name })}`
+            : m.text,
+      }));
+
     const userMsg: ChatMessageWithRecommendation = {
       role: "user",
       text: trimmed,
@@ -47,7 +58,7 @@ export default function ChatBox({ onOpenBooking }: ChatBoxProps) {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: trimmed }),
+        body: JSON.stringify({ message: trimmed, history }),
       });
 
       let data: { reply?: string; recommendation?: Recommendation | null };
@@ -74,7 +85,7 @@ export default function ChatBox({ onOpenBooking }: ChatBoxProps) {
       setLoading(false);
       inputRef.current?.focus();
     }
-  }, [input, loading]);
+  }, [input, loading, messages]);
 
   const handleKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
