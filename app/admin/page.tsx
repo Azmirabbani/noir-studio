@@ -199,7 +199,7 @@ export default function AdminPage() {
   };
 
   const handleLogout = async () => {
-    document.cookie = "admin_auth=; path=/; max-age=0";
+    await fetch("/api/auth/admin", { method: "DELETE" }).catch(() => {});
     await supabase.auth.signOut();
     window.location.href = "/admin/login";
   };

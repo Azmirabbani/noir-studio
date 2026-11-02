@@ -17,9 +17,14 @@ export default function Navbar({ onOpenBooking }: NavbarProps) {
       setIsScrolled(window.scrollY > 50);
     };
 
-    const checkAdmin = () => {
-      const adminCookie = document.cookie.includes("admin_auth=true");
-      setIsAdmin(adminCookie);
+    const checkAdmin = async () => {
+      try {
+        const res = await fetch("/api/auth/admin");
+        const data = await res.json();
+        setIsAdmin(Boolean(data?.admin));
+      } catch {
+        setIsAdmin(false);
+      }
     };
 
     window.addEventListener("scroll", handleScroll);
@@ -38,6 +43,8 @@ export default function Navbar({ onOpenBooking }: NavbarProps) {
 
         <div className="navbar-links">
           <a href="#services">Services</a>
+          <a href="#branches">Cabang</a>
+          <a href="#faq">FAQ</a>
           <button onClick={onOpenBooking} className="nav-link-btn">
             Book Now
           </button>
@@ -68,6 +75,12 @@ export default function Navbar({ onOpenBooking }: NavbarProps) {
       >
         <a href="#services" onClick={() => setIsMobileMenuOpen(false)}>
           Services
+        </a>
+        <a href="#branches" onClick={() => setIsMobileMenuOpen(false)}>
+          Cabang
+        </a>
+        <a href="#faq" onClick={() => setIsMobileMenuOpen(false)}>
+          FAQ
         </a>
         <button
           onClick={() => {

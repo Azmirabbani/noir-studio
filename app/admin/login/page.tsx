@@ -15,16 +15,27 @@ export default function AdminLoginPage() {
     setError("");
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) {
-        setError(error.message);
+      if (error || !data.session) {
+        setError(error?.message ?? "Login gagal. Coba lagi.");
       } else {
-        document.cookie = "admin_auth=true; path=/; max-age=86400";
-        window.location.href = "/admin";
+        const res = await fetch("/api/auth/admin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ access_token: data.session.access_token }),
+        });
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          await supabase.auth.signOut();
+          setError(body?.error ?? "Login gagal. Coba lagi.");
+        } else {
+          window.location.href = "/admin";
+        }
       }
     } catch (err) {
       setError("Login gagal. Coba lagi.");

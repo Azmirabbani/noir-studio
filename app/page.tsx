@@ -10,6 +10,10 @@ import ChatBox from "@/components/ChatBox";
 import Toast from "@/components/Toast";
 import BookingModal from "@/components/BookingModal";
 import FloatingChat from "@/components/FloatingChat";
+import GallerySection from "@/components/GallerySection";
+import BranchesSection from "@/components/BranchesSection";
+import FaqSection from "@/components/FaqSection";
+import { BRANCHES, OPENING_HOURS, SITE_DISCLAIMER } from "@/lib/constants";
 
 interface ToastState {
   message: string;
@@ -398,6 +402,18 @@ export default function Home() {
           min-width: 240px;
         }
 
+        .footer-disclaimer {
+          max-width: 1200px;
+          margin: 32px auto 0;
+          padding-top: 20px;
+          border-top: 1px solid rgba(255,255,255,0.05);
+          font-family: 'Outfit', sans-serif;
+          font-size: 0.75rem;
+          font-weight: 300;
+          color: #6b7280;
+          line-height: 1.7;
+        }
+
         @media (max-width: 768px) {
           .footer-content {
             flex-direction: column;
@@ -467,6 +483,8 @@ export default function Home() {
             </div>
           </section>
 
+          <GallerySection />
+
           {/* ✦ Testimonials Section */}
           <section id="testimonials" className="testimonials-section">
             <div className="testimonials-header">
@@ -501,6 +519,10 @@ export default function Home() {
             </div>
           </section>
 
+          <BranchesSection />
+
+          <FaqSection />
+
           {/* ✦ Footer Section */}
           <footer id="footer" className="site-footer">
             <div className="footer-content">
@@ -513,12 +535,17 @@ export default function Home() {
               </div>
 
               <div className="footer-address">
-                <span className="footer-label">Alamat</span>
-                <p className="footer-text">Jl. Riau No. 12, Bandung</p>
-                <p className="footer-text">Jl. Braga No. 45, Bandung</p>
-                <p className="footer-text">Jl. Dago Asri No. 8, Bandung</p>
+                <span className="footer-label">Cabang</span>
+                {BRANCHES.map((b) => (
+                  <p key={b.id} className="footer-text">
+                    {b.name} · {b.area}
+                  </p>
+                ))}
+                <p className="footer-text">{OPENING_HOURS}</p>
               </div>
             </div>
+
+            <p className="footer-disclaimer">{SITE_DISCLAIMER}</p>
           </footer>
         </div>
       </div>

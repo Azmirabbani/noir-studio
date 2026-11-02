@@ -12,6 +12,55 @@ interface Recommendation {
 
 interface ChatMessageWithRecommendation extends ChatMessage {
   recommendation?: Recommendation | null;
+  error?: boolean;
+}
+
+type StoredMessage = Omit<ChatMessageWithRecommendation, "timestamp"> & {
+  timestamp?: string;
+};
+
+const STORAGE_KEY = "noir-chat-v1";
+const STORAGE_TTL_MS = 24 * 60 * 60 * 1000;
+const MAX_STORED_MESSAGES = 50;
+
+const QUICK_SUGGESTIONS = [
+  "Rekomendasi gaya rambut",
+  "Berapa harga facial?",
+  "Massage untuk pegal di punggung",
+  "Cabang NOIR ada di mana saja?",
+];
+
+function loadStoredMessages(): ChatMessageWithRecommendation[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+
+    const saved = JSON.parse(raw) as {
+      savedAt?: number;
+      messages?: StoredMessage[];
+    };
+
+    if (
+      !saved?.savedAt ||
+      Date.now() - saved.savedAt > STORAGE_TTL_MS ||
+      !Array.isArray(saved.messages)
+    ) {
+      window.localStorage.removeItem(STORAGE_KEY);
+      return [];
+    }
+
+    return saved.messages
+      .filter(
+        (m) => (m.role === "user" || m.role === "bot") && typeof m.text === "string",
+      )
+      .map((m) => ({
+        ...m,
+        timestamp: m.timestamp ? new Date(m.timestamp) : undefined,
+      }));
+  } catch {
+    return [];
+  }
 }
 
 interface ChatBoxProps {
@@ -19,7 +68,7 @@ interface ChatBoxProps {
 }
 
 export default function ChatBox({ onOpenBooking }: ChatBoxProps) {
-  const [messages, setMessages] = useState<ChatMessageWithRecommendation[]>([]);
+  const [messages, setMessages] = useState<ChatMessageWithRecommendation[]>(loadStoredMessages);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -29,12 +78,31 @@ export default function ChatBox({ onOpenBooking }: ChatBoxProps) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  const sendMessage = useCallback(async () => {
-    const trimmed = input.trim();
+  // Simpan riwayat chat di browser (kedaluwarsa 24 jam) supaya tidak hilang saat halaman dimuat ulang
+  useEffect(() => {
+    try {
+      if (messages.length === 0) {
+        window.localStorage.removeItem(STORAGE_KEY);
+        return;
+      }
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          savedAt: Date.now(),
+          messages: messages.slice(-MAX_STORED_MESSAGES),
+        }),
+      );
+    } catch {
+      // penyimpanan penuh atau diblokir: abaikan
+    }
+  }, [messages]);
+
+  const sendMessage = useCallback(async (override?: string) => {
+    const trimmed = (override ?? input).trim();
     if (!trimmed || loading) return;
 
     const history = messages
-      .filter((m) => m.text)
+      .filter((m) => m.text && !m.error)
       .slice(-8)
       .map((m) => ({
         role: m.role === "user" ? "user" : "assistant",
@@ -73,19 +141,31 @@ export default function ChatBox({ onOpenBooking }: ChatBoxProps) {
         text: data.reply ?? "Tidak ada respons.",
         timestamp: new Date(),
         recommendation: data.recommendation,
+        error: !res.ok,
       };
 
       setMessages((prev) => [...prev, botMsg]);
     } catch {
       setMessages((prev) => [
         ...prev,
-        { role: "bot", text: "Koneksi gagal. Coba lagi ya." },
+        {
+          role: "bot",
+          text: "Koneksi gagal. Coba lagi ya.",
+          timestamp: new Date(),
+          error: true,
+        },
       ]);
     } finally {
       setLoading(false);
       inputRef.current?.focus();
     }
   }, [input, loading, messages]);
+
+  const resetChat = () => {
+    setMessages([]);
+    setInput("");
+    inputRef.current?.focus();
+  };
 
   const handleKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -107,12 +187,26 @@ export default function ChatBox({ onOpenBooking }: ChatBoxProps) {
 
   return (
     <div className="chatbox-root">
-      <div className="chat-messages">
+      <div className="chat-messages" role="log" aria-live="polite">
         {messages.length === 0 && !loading && (
           <div className="chat-empty">
             <span className="empty-icon">◈</span>
             <span>Tanyakan sesuatu atau langsung booking</span>
             <span className="empty-hint">"Saya ingin haircut besok jam 2"</span>
+
+            <div className="quick-replies">
+              {QUICK_SUGGESTIONS.map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  className="quick-chip"
+                  onClick={() => sendMessage(q)}
+                  disabled={loading}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -161,6 +255,19 @@ export default function ChatBox({ onOpenBooking }: ChatBoxProps) {
         <div ref={bottomRef} />
       </div>
 
+      {messages.length > 0 && (
+        <div className="chat-toolbar">
+          <button
+            type="button"
+            className="chat-reset-btn"
+            onClick={resetChat}
+            disabled={loading}
+          >
+            Mulai percakapan baru
+          </button>
+        </div>
+      )}
+
       <div className="chat-input-row">
         <input
           ref={inputRef}
@@ -174,7 +281,7 @@ export default function ChatBox({ onOpenBooking }: ChatBoxProps) {
         />
         <button
           className="send-btn"
-          onClick={sendMessage}
+          onClick={() => sendMessage()}
           disabled={loading || !input.trim()}
           aria-label="Send message"
         >
@@ -250,6 +357,75 @@ export default function ChatBox({ onOpenBooking }: ChatBoxProps) {
           color: #4b5563 !important;
           font-size: 0.75rem !important;
           margin-top: 4px;
+        }
+
+        .quick-replies {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 8px;
+          margin-top: 16px;
+          padding: 0 8px;
+        }
+
+        .quick-chip {
+          font-family: 'Outfit', sans-serif;
+          font-size: 0.72rem;
+          font-weight: 400;
+          letter-spacing: 0.03em;
+          color: #c4b5fd;
+          background: rgba(167,139,250,0.06);
+          border: 1px solid rgba(167,139,250,0.22);
+          border-radius: 999px;
+          padding: 8px 14px;
+          cursor: pointer;
+          transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+        }
+
+        .quick-chip:hover:not(:disabled) {
+          background: rgba(167,139,250,0.14);
+          border-color: rgba(167,139,250,0.45);
+          color: #ede9fe;
+        }
+
+        .quick-chip:focus-visible,
+        .chat-reset-btn:focus-visible {
+          outline: 2px solid #a78bfa;
+          outline-offset: 2px;
+        }
+
+        .quick-chip:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .chat-toolbar {
+          display: flex;
+          justify-content: flex-end;
+          padding: 4px 0 8px;
+        }
+
+        .chat-reset-btn {
+          font-family: 'Outfit', sans-serif;
+          font-size: 0.66rem;
+          font-weight: 400;
+          letter-spacing: 1.5px;
+          text-transform: uppercase;
+          color: #6b7280;
+          background: none;
+          border: none;
+          padding: 4px 0;
+          cursor: pointer;
+          transition: color 0.2s ease;
+        }
+
+        .chat-reset-btn:hover:not(:disabled) {
+          color: #c4b5fd;
+        }
+
+        .chat-reset-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
         }
 
         .msg-row {

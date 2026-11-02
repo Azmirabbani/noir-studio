@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { ADMIN_COOKIE_NAME, verifyAdminSession } from "@/lib/admin-session";
 
-const COOKIE_NAME = "admin_auth";
-
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   if (pathname === "/admin/login") {
@@ -11,9 +10,11 @@ export function proxy(request: NextRequest) {
   }
 
   if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
-    const cookie = request.cookies.get(COOKIE_NAME)?.value;
+    const session = await verifyAdminSession(
+      request.cookies.get(ADMIN_COOKIE_NAME)?.value,
+    );
 
-    if (!cookie) {
+    if (!session) {
       if (pathname.startsWith("/api/admin")) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }

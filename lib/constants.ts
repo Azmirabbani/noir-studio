@@ -27,3 +27,41 @@ export const DEFAULT_META: ServiceMeta = {
 export const SALON_NAME = "NOIR";
 export const SALON_TAGLINE = "Studio";
 export const SALON_SUBTITLE = "Pengalaman premium, sentuhan eksklusif";
+
+export const OPENING_HOURS = "Setiap hari, 10.00 – 21.00 WIB";
+
+export interface Branch {
+  id: string;
+  name: string;
+  area: string;
+  mapQuery: string;
+  note: string;
+}
+
+// Data contoh untuk keperluan portofolio. Lokasi sengaja hanya sampai tingkat jalan/area.
+export const BRANCHES: Branch[] = [
+  {
+    id: "riau",
+    name: "NOIR Riau",
+    area: "Kawasan Jalan Riau, Bandung",
+    mapQuery: "Jalan Riau, Bandung",
+    note: "Dekat pusat kuliner dan perbelanjaan Bandung.",
+  },
+  {
+    id: "braga",
+    name: "NOIR Braga",
+    area: "Kawasan Jalan Braga, Bandung",
+    mapQuery: "Jalan Braga, Bandung",
+    note: "Di kawasan bersejarah yang ramai dan mudah dijangkau.",
+  },
+  {
+    id: "dago",
+    name: "NOIR Dago",
+    area: "Kawasan Dago, Bandung",
+    mapQuery: "Jalan Ir. H. Juanda (Dago), Bandung",
+    note: "Di kawasan sejuk Bandung utara.",
+  },
+];
+
+export const SITE_DISCLAIMER =
+  "Situs ini adalah proyek portofolio. Alamat, testimoni, dan angka pada halaman ini adalah data contoh.";
